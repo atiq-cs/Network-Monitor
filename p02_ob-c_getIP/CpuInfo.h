@@ -17,7 +17,6 @@
 #include <mach/processor_info.h>
 #include <mach/mach_host.h>
 //Uses related
-#include <sys/sysctl.h>
 #include <netinet/in.h>
 #include <net/route.h>
 //System Network info related
@@ -33,13 +32,27 @@
 #include <mach/mach_init.h>
 #include <mach/mach_host.h>
 
+#include <pwd.h>
+//menumeters
+#import <sys/types.h>
+#import <net/if_dl.h>
+#import <net/if_var.h>
+#import <net/route.h>
+#import <limits.h>
 @interface CpuInfo : NSObject {
     processor_info_array_t cpuInfo, prevCpuInfo;
     mach_msg_type_number_t numCpuInfo, numPrevCpuInfo;
     unsigned numCPUs;
     NSTimer *updateTimer;
     NSLock *CPUUsageLock;
+    
+    // Old data for containing prior reads
+    NSMutableDictionary		*lastData;
+    // Buffer we keep around
+    size_t					sysctlBufferSize;
+    uint8_t					*sysctlBuffer;
 }
 - (void)applicationDidFinishLaunching;
 - (void)updateInfo:(NSTimer *)timer;
+- (NSArray*)getBSDProcessList;
 @end

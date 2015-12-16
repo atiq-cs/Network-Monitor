@@ -101,13 +101,30 @@ void getNetworkInfo() {
         freeifaddrs(allInterfaces);
     }
 }
-
 int main(int argc, const char * argv[]) {
     @autoreleasepool {
+        int pid = [[NSProcessInfo processInfo] processIdentifier];
+        NSPipe *pipe = [NSPipe pipe];
+        NSFileHandle *file = pipe.fileHandleForReading;
+        
+        NSTask *task = [[NSTask alloc] init];
+        task.launchPath = @"/usr/bin/top";
+        task.arguments = @[@"-l1"];
+        task.standardOutput = pipe;
+        
+        [task launch];
+        
+        NSData *data = [file readDataToEndOfFile];
+        [file closeFile];
+        
+        NSString *grepOutput = [[NSString alloc] initWithData: data encoding: NSUTF8StringEncoding];
+        NSLog (@"grep returned:\n%@", grepOutput);
         getNetworkInfo();
         getCPULoad();
         getRamUses();
         CpuInfo *cpuInfo = [[CpuInfo alloc]init];
+        //print List of running processes
+        NSLog(@"%@",[cpuInfo getBSDProcessList]);
         [cpuInfo applicationDidFinishLaunching];
     }
     return 0;
