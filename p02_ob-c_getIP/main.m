@@ -13,7 +13,7 @@
 
 #import <Foundation/Foundation.h>
 #import "CpuInfo.h"
-
+@import AppKit;
 
 static unsigned long long _previousTotalTicks = 0;
 static unsigned long long _previousIdleTicks = 0;
@@ -103,7 +103,34 @@ void getNetworkInfo() {
 }
 int main(int argc, const char * argv[]) {
     @autoreleasepool {
-        int pid = [[NSProcessInfo processInfo] processIdentifier];
+        //http://stackoverflow.com/questions/3545102/how-to-enumerate-volumes-on-mac-os-x
+        NSWorkspace   *ws = [NSWorkspace sharedWorkspace];
+        NSArray     *vols = [ws mountedLocalVolumePaths];
+        NSFileManager *fm = [NSFileManager defaultManager];
+        
+        for (NSString *path in vols)
+        {
+            NSDictionary* fsAttributes;
+            NSString *description, *type, *name;
+            BOOL removable, writable, unmountable, res;
+            NSNumber *size;
+            
+            res = [ws getFileSystemInfoForPath:path
+                                   isRemovable:&removable
+                                    isWritable:&writable
+                                 isUnmountable:&unmountable
+                                   description:&description
+                                          type:&type];
+            if (!res) continue;
+            fsAttributes = [fm fileSystemAttributesAtPath:path];
+            name         = [fm displayNameAtPath:path];
+            size         = [fsAttributes objectForKey:NSFileSystemSize];
+            NSNumber *freeSpace = [fsAttributes objectForKey:NSFileSystemFreeSize];
+            NSLog(@"path=%@\nname=%@\nremovable=%d\nwritable=%d\nunmountable=%d\n"
+                  "description=%@\ntype=%@, size=%@\nfree size=%@\n",
+                  path, name, removable, writable, unmountable, description, type, size, freeSpace);
+        }
+        //int pid = [[NSProcessInfo processInfo] processIdentifier];
         NSPipe *pipe = [NSPipe pipe];
         NSFileHandle *file = pipe.fileHandleForReading;
         
