@@ -114,7 +114,7 @@ int main(int argc, const char * argv[]) {
             NSString *description, *type, *name;
             BOOL removable, writable, unmountable, res;
             NSNumber *size;
-            
+            double freeSpaceMB = -1.;
             res = [ws getFileSystemInfoForPath:path
                                    isRemovable:&removable
                                     isWritable:&writable
@@ -126,9 +126,10 @@ int main(int argc, const char * argv[]) {
             name         = [fm displayNameAtPath:path];
             size         = [fsAttributes objectForKey:NSFileSystemSize];
             NSNumber *freeSpace = [fsAttributes objectForKey:NSFileSystemFreeSize];
+            freeSpaceMB = (freeSpace.doubleValue * 1.0)/ (1024 * 1024);
             NSLog(@"path=%@\nname=%@\nremovable=%d\nwritable=%d\nunmountable=%d\n"
-                  "description=%@\ntype=%@, size=%@\nfree size=%@\n",
-                  path, name, removable, writable, unmountable, description, type, size, freeSpace);
+                  "description=%@\ntype=%@, size=%@\nfree Space=%lf MB\n",
+                  path, name, removable, writable, unmountable, description, type, size, freeSpaceMB);
         }
         //int pid = [[NSProcessInfo processInfo] processIdentifier];
         NSPipe *pipe = [NSPipe pipe];
@@ -145,7 +146,7 @@ int main(int argc, const char * argv[]) {
         [file closeFile];
         
         NSString *grepOutput = [[NSString alloc] initWithData: data encoding: NSUTF8StringEncoding];
-        NSLog (@"grep returned:\n%@", grepOutput);
+        NSLog (@"Top returned:\n%@", grepOutput);
         getNetworkInfo();
         getCPULoad();
         getRamUses();
