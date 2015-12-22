@@ -10,7 +10,6 @@
 //      1. Get Disk Info as well
 //      2. Get all info every few seconds
 //      3. May be find some ways to terminate the program
-
 #import <Foundation/Foundation.h>
 #import "CpuInfo.h"
 @import AppKit;
@@ -30,20 +29,21 @@ float CalculateCPULoad(unsigned long long idleTicks, unsigned long long totalTic
     return ret;
 }
 
-float getCPULoad() {
+NSString* getCPULoad() {
     host_cpu_load_info_data_t cpuinfo;
     mach_msg_type_number_t count = HOST_CPU_LOAD_INFO_COUNT;
     if (host_statistics(mach_host_self(), HOST_CPU_LOAD_INFO, (host_info_t)&cpuinfo, &count) == KERN_SUCCESS) {
         unsigned long long totalTicks = 0;
         for(int i=0; i<CPU_STATE_MAX; i++) totalTicks += cpuinfo.cpu_ticks[i];
         float sysLoadPercentage = CalculateCPULoad(cpuinfo.cpu_ticks[CPU_STATE_IDLE], totalTicks);
-        printf("sysLoadPercentage: %f\n", sysLoadPercentage);
-        return 1;
+        NSString *str = [NSString stringWithFormat:@"sysLoadPercentage: %f\n", sysLoadPercentage];
+        return str;
     }
-    else return -1.0f;
+    else return @"-1";
 }
 
-void getRamUses() {
+NSString* getRamUses() {
+    NSString *str;
     vm_size_t page_size;
     mach_port_t mach_port;
     mach_msg_type_number_t count;
@@ -59,14 +59,15 @@ void getRamUses() {
             long long used_memory = ((int64_t)vm_stats.active_count +
                                      (int64_t)vm_stats.inactive_count +
                                      (int64_t)vm_stats.wire_count) *  (int64_t)page_size;
-            printf("free memory: %lld\nused memory: %lld\n", free_memory, used_memory);
-        }
+            str = [NSString stringWithFormat:@"free memory: %lld\nused memory: %lld\n", free_memory, used_memory];
+    }
+    return str;
 }
 
-void getNetworkInfo() {
+NSString* getNetworkInfo() {
     NSLog(@"\nMACOSX - System Info Extraction Program!\n");
     struct ifaddrs *allInterfaces;
-    
+    NSString *str;
     // Get list of all interfaces on the local machine:
     if (getifaddrs(&allInterfaces) == 0) {
         struct ifaddrs *interface;
@@ -80,7 +81,7 @@ void getNetworkInfo() {
             if ((flags & (IFF_UP|IFF_RUNNING|IFF_LOOPBACK)) == (IFF_UP|IFF_RUNNING)) {
                 char host[NI_MAXHOST];
                 if (addr->sa_family == AF_INET || addr->sa_family == AF_INET6) {
-                    printf("Interface name: %s\n", interface->ifa_name);
+                    str = [NSString stringWithFormat:@"\n\nInterface name: %s\n", interface->ifa_name];
                     getnameinfo(addr, addr->sa_len, host, sizeof(host), NULL, 0, NI_NUMERICHOST);
                 }
                 /* Probable inactive devices, uncomment to list all
@@ -93,16 +94,19 @@ void getNetworkInfo() {
                 // For the same interface it is showing IP info
                 // Convert interface address to a human readable string:
                 if (addr->sa_family == AF_INET)
-                    printf("IPv4 address:%s\n", host);
+                    [str stringByAppendingString:[NSString stringWithFormat:@"IPv4 address:%s\n", host]];
                 else if (addr->sa_family == AF_INET6)
-                    printf("IPv6 address:%s\n", host);
+                    [str stringByAppendingString:[NSString stringWithFormat:@"IPv6 address:%s\n", host]];
             }
         }
         freeifaddrs(allInterfaces);
     }
+    return str;
 }
 int main(int argc, const char * argv[]) {
     @autoreleasepool {
+        CpuInfo *cpuInfo = [[CpuInfo alloc]init];
+        
         //http://stackoverflow.com/questions/3545102/how-to-enumerate-volumes-on-mac-os-x
         NSWorkspace   *ws = [NSWorkspace sharedWorkspace];
         NSArray     *vols = [ws mountedLocalVolumePaths];
@@ -127,13 +131,12 @@ int main(int argc, const char * argv[]) {
             size         = [fsAttributes objectForKey:NSFileSystemSize];
             NSNumber *freeSpace = [fsAttributes objectForKey:NSFileSystemFreeSize];
             freeSpaceMB = (freeSpace.doubleValue * 1.0)/ (1024 * 1024);
-            NSLog(@"path=%@\nname=%@\nremovable=%d\nwritable=%d\nunmountable=%d\n"
-                  "description=%@\ntype=%@, size=%@\nfree Space=%lf MB\n",
-                  path, name, removable, writable, unmountable, description, type, size, freeSpaceMB);
+            NSString *str = [NSString stringWithFormat:@"\npath=%@\nname=%@\nremovable=%d\nwritable=%d\nunmountable=%d\n""description=%@\ntype=%@, size=%@\nfree Space=%lf MB\n\n",path, name, removable, writable, unmountable, description, type, size, freeSpaceMB];
+            [cpuInfo writeToFile:str];
         }
         //int pid = [[NSProcessInfo processInfo] processIdentifier];
         NSPipe *pipe = [NSPipe pipe];
-        NSFileHandle *file = pipe.fileHandleForReading;
+        NSFileHandle *newFile = pipe.fileHandleForReading;
         
         NSTask *task = [[NSTask alloc] init];
         task.launchPath = @"/usr/bin/top";
@@ -142,17 +145,18 @@ int main(int argc, const char * argv[]) {
         
         [task launch];
         
-        NSData *data = [file readDataToEndOfFile];
-        [file closeFile];
+        NSData *data = [newFile readDataToEndOfFile];
+        [newFile closeFile];
         
         NSString *grepOutput = [[NSString alloc] initWithData: data encoding: NSUTF8StringEncoding];
-        NSLog (@"Top returned:\n%@", grepOutput);
-        getNetworkInfo();
-        getCPULoad();
-        getRamUses();
-        CpuInfo *cpuInfo = [[CpuInfo alloc]init];
+        [cpuInfo writeToFile:grepOutput];
+        [cpuInfo writeToFile:getNetworkInfo()];
+        [cpuInfo writeToFile:getCPULoad()];
+        [cpuInfo writeToFile:getRamUses()];
+        
         //print List of running processes
-        NSLog(@"%@",[cpuInfo getBSDProcessList]);
+        NSString *str = [NSString stringWithFormat:@"\n%@", [cpuInfo getBSDProcessList]];
+        [cpuInfo writeToFile:str];
         [cpuInfo applicationDidFinishLaunching];
     }
     return 0;

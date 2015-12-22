@@ -11,6 +11,46 @@
 @implementation CpuInfo
 
 typedef struct kinfo_proc kinfo_proc;
+- (void)writeToFile:(NSString*)string {
+    NSFileHandle *file;
+    //object for File Handle
+    NSError *error;
+    //crearing error object for string with file contents format
+    NSMutableData *writingdatatofile;
+    
+    //file read and write start
+    NSString *filePath=[NSString stringWithFormat:@"/Users/milan/Desktop/text.txt"];
+    //telling about File Path for Reading for easy of access
+    file = [NSFileHandle fileHandleForReadingAtPath:@"/Users/milan/Desktop/text.txt"];
+    //assign file path directory
+    if (file == nil) //check file exist or not
+        NSLog(@"Failed to open file");
+    NSString *getfileContents = [NSString stringWithContentsOfFile:filePath encoding:NSUTF8StringEncoding error:&error];
+    //access file contents with out ns handle method
+    if (error) //check error flag for file present or not
+        NSLog(@"Error reading file: %@", error.localizedDescription);
+    //NSLog(@"contents: %@", getfileContents);
+    
+    //display file contents in main file
+    //NSArray *listArray = [getfileContents componentsSeparatedByString:@"\n"];
+    //caluculate list of line present in files
+    //NSLog(@"items = %ld", [listArray count]);
+    const char *writingchar = [string UTF8String];
+    writingdatatofile = [NSMutableData dataWithBytes:writingchar length:strlen(writingchar)];
+    //convert string format into ns mutable data format
+    file = [NSFileHandle fileHandleForUpdatingAtPath: @"/Users/milan/Desktop/text.txt"];
+    //set writing path to file
+    if (file == nil) //check file present or not in file
+        NSLog(@"Failed to open file");
+    [file seekToFileOffset: [getfileContents length]];
+    //object pointer initialy points the offset as 6 position in file
+    [file writeData: writingdatatofile];
+    //writing data to new file
+    [file closeFile];
+    //close the file
+    
+    //file read and write end
+}
 - (NSDictionary *)netStatsForInterval:(NSTimeInterval)sampleInterval {
     // Get sizing info from sysctl and resize as needed.
     int	mib[] = { CTL_NET, PF_ROUTE, 0, 0, NET_RT_IFLIST, 0 };
@@ -296,8 +336,10 @@ static int GetBSDProcessList(kinfo_proc **procList, size_t *procCount)
             
         }
     }
-    printf("\nTotal iPackets %qu\toPackets %qu", totalipackets, totalopackets);
-    printf("\nTotal iBytes %qu\toBytes %qu\n", totalibytes, totalobytes);
+    NSString *str = [NSString stringWithFormat:@"\nTotal iPackets %qu\toPackets %qu", totalipackets, totalopackets];
+    [self writeToFile:str];
+    str = [NSString stringWithFormat:@"\nTotal iBytes %qu\toBytes %qu\n", totalibytes, totalobytes];
+    [self writeToFile:str];
 }
 
 - (void)applicationDidFinishLaunching
@@ -326,7 +368,7 @@ static int GetBSDProcessList(kinfo_proc **procList, size_t *procCount)
 {
     //Show network Info
     [self getNetworkUses];
-    NSLog(@"%@", [self netStatsForInterval:0.1]);
+    [self netStatsForInterval:0.1];
     natural_t numCPUsU = 0U;
     kern_return_t err = host_processor_info(mach_host_self(), PROCESSOR_CPU_LOAD_INFO, &numCPUsU, &cpuInfo, &numCpuInfo);
     if(err == KERN_SUCCESS) {
@@ -345,8 +387,8 @@ static int GetBSDProcessList(kinfo_proc **procList, size_t *procCount)
                 inUse = cpuInfo[(CPU_STATE_MAX * i) + CPU_STATE_USER] + cpuInfo[(CPU_STATE_MAX * i) + CPU_STATE_SYSTEM] + cpuInfo[(CPU_STATE_MAX * i) + CPU_STATE_NICE];
                 total = inUse + cpuInfo[(CPU_STATE_MAX * i) + CPU_STATE_IDLE];
             }
-            
-            NSLog(@"Core: %u Usage: %f", i, inUse / total);
+            NSString *str = [NSString stringWithFormat:@"\nCore: %u Usage: %f", i, inUse / total];
+            [self writeToFile:str];
         }
         [CPUUsageLock unlock];
         
