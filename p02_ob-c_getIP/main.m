@@ -103,11 +103,19 @@ NSString* getNetworkInfo() {
     }
     return str;
 }
+
+/**
+ * Entry point of the application
+ */
 int main(int argc, const char * argv[]) {
+    // automatically release allocated items
     @autoreleasepool {
         CpuInfo *cpuInfo = [[CpuInfo alloc]init];
         
-        //http://stackoverflow.com/questions/3545102/how-to-enumerate-volumes-on-mac-os-x
+        /**
+         * This is one of the ways to show volume space info. Here is a ref:
+         * http://stackoverflow.com/questions/3545102/how-to-enumerate-volumes-on-mac-os-x
+         */
         NSWorkspace   *ws = [NSWorkspace sharedWorkspace];
         NSArray     *vols = [ws mountedLocalVolumePaths];
         NSFileManager *fm = [NSFileManager defaultManager];
@@ -134,6 +142,7 @@ int main(int argc, const char * argv[]) {
             NSString *str = [NSString stringWithFormat:@"\npath=%@\nname=%@\nremovable=%d\nwritable=%d\nunmountable=%d\n""description=%@\ntype=%@, size=%@\nfree Space=%lf MB\n\n",path, name, removable, writable, unmountable, description, type, size, freeSpaceMB];
             [cpuInfo writeToFile:str];
         }
+        
         //int pid = [[NSProcessInfo processInfo] processIdentifier];
         NSPipe *pipe = [NSPipe pipe];
         NSFileHandle *newFile = pipe.fileHandleForReading;

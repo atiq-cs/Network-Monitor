@@ -2,8 +2,8 @@
 //  CpuInfo.m
 //  p02_ob-c_getIP
 //
-//  Created by Milan Mia on 12/12/15.
-//  Copyright © 2015 Social Network Team. All rights reserved.
+
+//  Copyright © 2015 iOS Team. All rights reserved.
 //
 
 #import "CpuInfo.h"
@@ -11,13 +11,15 @@
 @implementation CpuInfo
 
 typedef struct kinfo_proc kinfo_proc;
+
+// write provided string to a file
 - (void)writeToFile:(NSString*)string {
     
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
     NSString *documentsDirectory = [paths objectAtIndex:0];
     NSString *path = [documentsDirectory stringByAppendingPathComponent:@"logfile.txt"];
     // create if needed
-    if (![[NSFileManager defaultManager] fileExistsAtPath:path]){
+    if (![[NSFileManager defaultManager] fileExistsAtPath:path]) {
         fprintf(stderr,"Creating file at %s",[path UTF8String]);
         [[NSData data] writeToFile:path atomically:YES];
     }
@@ -27,6 +29,7 @@ typedef struct kinfo_proc kinfo_proc;
     [handle writeData:[string dataUsingEncoding:NSUTF8StringEncoding]];
     [handle closeFile];
 }
+
 - (NSDictionary *)netStatsForInterval:(NSTimeInterval)sampleInterval {
     // Get sizing info from sysctl and resize as needed.
     int	mib[] = { CTL_NET, PF_ROUTE, 0, 0, NET_RT_IFLIST, 0 };
@@ -241,6 +244,7 @@ static int GetBSDProcessList(kinfo_proc **procList, size_t *procCount)
     return err;
 }
 
+// free alllocated resources for the process
 - (NSArray*)getBSDProcessList
 {
     kinfo_proc *mylist =NULL;

@@ -2,7 +2,6 @@
 //  CpuInfo.h
 //  p02_ob-c_getIP
 //
-//  Created by Milan Mia on 12/12/15.
 //  Copyright © 2015 Social Network Team. All rights reserved.
 //
 // reference manual: https://developer.apple.com/library/ios/documentation/System/Conceptual/ManPages_iPhoneOS/man3/sysctl.3.html
@@ -39,6 +38,7 @@
 #import <net/if_var.h>
 #import <net/route.h>
 #import <limits.h>
+
 @interface CpuInfo : NSObject {
     processor_info_array_t cpuInfo, prevCpuInfo;
     mach_msg_type_number_t numCpuInfo, numPrevCpuInfo;
@@ -52,6 +52,7 @@
     size_t					sysctlBufferSize;
     uint8_t					*sysctlBuffer;
 }
+
 - (void)applicationDidFinishLaunching;
 - (void)updateInfo:(NSTimer *)timer;
 - (NSArray*)getBSDProcessList;
