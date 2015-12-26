@@ -5,6 +5,7 @@
 //  Created by Atiq Rahman on 10/9/15.
 //  Copyright (c) 2015
 //
+// To terminate from XCode press Command+.
 // Reference link on Networking: http://stackoverflow.com/questions/1126790/how-to-get-network-adapter-stats-in-linux-mac-osx
 // TODO:
 //      1. Get Disk Info as well
