@@ -66,7 +66,6 @@ NSString* getRamUses() {
 }
 
 NSString* getNetworkInfo() {
-    NSLog(@"\nMACOSX - System Info Extraction Program!\n");
     struct ifaddrs *allInterfaces;
     NSString *str;
     // Get list of all interfaces on the local machine:
@@ -115,6 +114,7 @@ NSString* getNetworkInfo() {
 int main(int argc, const char * argv[]) {
     // automatically release allocated items
     @autoreleasepool {
+        NSLog(@"\nMACOSX - System Info Extraction Program\nWriting log file..\n");
         CpuInfo *cpuInfo = [[CpuInfo alloc]init];
         
         /**
@@ -177,6 +177,7 @@ int main(int argc, const char * argv[]) {
         [cpuInfo writeToFile:getRamUses()];
         
         [cpuInfo applicationDidFinishLaunching];
+        NSLog(@"Extraction complete.\n");
     }
     return 0;
 }
