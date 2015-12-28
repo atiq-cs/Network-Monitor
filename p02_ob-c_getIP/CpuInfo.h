@@ -44,6 +44,7 @@
     mach_msg_type_number_t numCpuInfo, numPrevCpuInfo;
     unsigned numCPUs;
     NSTimer *updateTimer;
+    int time;
     NSLock *CPUUsageLock;
     
     // Old data for containing prior reads

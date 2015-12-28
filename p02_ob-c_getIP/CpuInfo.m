@@ -84,12 +84,12 @@ typedef struct kinfo_proc kinfo_proc;
         numCPUs = 1;
     
     CPUUsageLock = [[NSLock alloc] init];
-    updateTimer = [NSTimer scheduledTimerWithTimeInterval:3
+    updateTimer = [NSTimer scheduledTimerWithTimeInterval:2
                                                     target:self
                                                   selector:@selector(updateInfo:)
                                                   userInfo:nil
                                                    repeats:YES];
-
+    time = 0;
     NSDate *timeout = [NSDate dateWithTimeIntervalSinceNow:60];
     while ([timeout timeIntervalSinceNow]>0) {
         [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode
@@ -100,6 +100,9 @@ typedef struct kinfo_proc kinfo_proc;
 - (void)updateInfo:(NSTimer *)timer
 {
     //Show network Info
+    [self writeToFile:[NSString stringWithFormat:@"\n\nTime: %d seconds", time]];
+    NSLog(@"Time: %d seconds", time);
+    time +=2;
     [self getNetworkUses];
     natural_t numCPUsU = 0U;
     kern_return_t err = host_processor_info(mach_host_self(), PROCESSOR_CPU_LOAD_INFO, &numCPUsU, &cpuInfo, &numCpuInfo);
