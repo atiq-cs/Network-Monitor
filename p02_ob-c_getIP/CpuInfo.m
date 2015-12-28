@@ -89,7 +89,7 @@ typedef struct kinfo_proc kinfo_proc;
                                                   selector:@selector(updateInfo:)
                                                   userInfo:nil
                                                    repeats:YES];
-    time = 0;
+    time = 2;
     NSDate *timeout = [NSDate dateWithTimeIntervalSinceNow:60];
     while ([timeout timeIntervalSinceNow]>0) {
         [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode

@@ -37,7 +37,7 @@ NSString* getCPULoad() {
         unsigned long long totalTicks = 0;
         for(int i=0; i<CPU_STATE_MAX; i++) totalTicks += cpuinfo.cpu_ticks[i];
         float sysLoadPercentage = CalculateCPULoad(cpuinfo.cpu_ticks[CPU_STATE_IDLE], totalTicks);
-        NSString *str = [NSString stringWithFormat:@"sysLoadPercentage: %f\n", sysLoadPercentage];
+        NSString *str = [NSString stringWithFormat:@"\nCPU Load Info\n=================\nCPU Usage: %f\n", sysLoadPercentage];
         return str;
     }
     else return @"-1";
@@ -60,7 +60,7 @@ NSString* getRamUses() {
             long long used_memory = ((int64_t)vm_stats.active_count +
                                      (int64_t)vm_stats.inactive_count +
                                      (int64_t)vm_stats.wire_count) *  (int64_t)page_size;
-            str = [NSString stringWithFormat:@"free memory: %lld\nused memory: %lld\n", free_memory, used_memory];
+            str = [NSString stringWithFormat:@"\nMain Memory Usage\n=================\nFree: %lld\nUsed: %lld\n", free_memory, used_memory];
     }
     return str;
 }
