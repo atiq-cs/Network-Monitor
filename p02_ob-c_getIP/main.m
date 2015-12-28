@@ -81,7 +81,7 @@ NSString* getNetworkInfo() {
             if ((flags & (IFF_UP|IFF_RUNNING|IFF_LOOPBACK)) == (IFF_UP|IFF_RUNNING)) {
                 char host[NI_MAXHOST];
                 if (addr->sa_family == AF_INET || addr->sa_family == AF_INET6) {
-                    str = [NSString stringWithFormat:@"\n\nInterface name: %s\n", interface->ifa_name];
+                    str = [NSString stringWithFormat:@"\nNetwork Info\n===========================\nInterface name: %s\n", interface->ifa_name];
                     getnameinfo(addr, addr->sa_len, host, sizeof(host), NULL, 0, NI_NUMERICHOST);
                 }
                 /* Probable inactive devices, uncomment to list all
