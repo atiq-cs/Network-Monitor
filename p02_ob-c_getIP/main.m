@@ -85,6 +85,19 @@ NSString* getNetworkInfo() {
     }
     return str;
 }
+/**
+ * Remove logfile if already exists
+ */
+void removeFile() {
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+    NSString *documentsDirectory = [paths objectAtIndex:0];
+    NSString *path = [documentsDirectory stringByAppendingPathComponent:@"logfile.txt"];
+    NSError *error;
+    // delete if exists
+    if ([[NSFileManager defaultManager] fileExistsAtPath:path]) {
+        [[NSFileManager defaultManager] removeItemAtPath:path error:&error];
+    }
+}
 
 /**
  * Entry point of the application
@@ -94,7 +107,7 @@ int main(int argc, const char * argv[]) {
     @autoreleasepool {
         NSLog(@"\nMACOSX - System Info Extraction Program\nWriting log file..\n");
         CpuInfo *cpuInfo = [[CpuInfo alloc]init];
-        
+        removeFile();
         /**
          * This is one of the ways to show volume space info. Here is a ref:
          * http://stackoverflow.com/questions/3545102/how-to-enumerate-volumes-on-mac-os-x

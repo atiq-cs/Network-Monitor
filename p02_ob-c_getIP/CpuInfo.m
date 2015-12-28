@@ -29,7 +29,6 @@ typedef struct kinfo_proc kinfo_proc;
     [handle writeData:[string dataUsingEncoding:NSUTF8StringEncoding]];
     [handle closeFile];
 }
-
 - (void) getNetworkUses {
     int mib[] = {
         CTL_NET,
@@ -60,8 +59,6 @@ typedef struct kinfo_proc kinfo_proc;
         next += ifm->ifm_msglen;
         if (ifm->ifm_type == RTM_IFINFO2) {
             struct if_msghdr2 *if2m = (struct if_msghdr2 *)ifm;
-            //            totalibytes += if2m->ifm_data.ifi_ibytes;
-            //            totalobytes += if2m->ifm_data.ifi_obytes;
             totalipackets += if2m->ifm_data.ifi_ipackets;
             totalopackets += if2m->ifm_data.ifi_opackets;
             totalibytes += if2m->ifm_data.ifi_ibytes;

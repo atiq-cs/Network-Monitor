@@ -39,6 +39,16 @@
 #import <net/route.h>
 #import <limits.h>
 
+
+#include <stdlib.h>
+#include <stdio.h>
+
+#include <sys/socketvar.h>
+#include <netinet/ip.h>
+#include <netinet/ip_var.h>
+#include <netinet/tcp.h>
+#include <netinet/tcp_var.h>
+
 @interface CpuInfo : NSObject {
     processor_info_array_t cpuInfo, prevCpuInfo;
     mach_msg_type_number_t numCpuInfo, numPrevCpuInfo;
