@@ -79,7 +79,6 @@ typedef struct kinfo_proc kinfo_proc;
         }
         // Load in old statistics for this interface
         NSDictionary *oldStats = [lastData objectForKey:interfaceName];
-        
             // Not a PPP connection
             if (oldStats && (ifmsg->ifm_flags & IFF_UP)) {
                 // Non-PPP data is sized at u_long, which means we need to deal

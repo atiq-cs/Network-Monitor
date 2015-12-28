@@ -116,6 +116,7 @@ int main(int argc, const char * argv[]) {
         /**
          * This is one of the ways to show volume space info. Here is a ref:
          * http://stackoverflow.com/questions/3545102/how-to-enumerate-volumes-on-mac-os-x
+         * mount point info query starts
          */
         NSWorkspace   *ws = [NSWorkspace sharedWorkspace];
         NSArray     *vols = [ws mountedLocalVolumePaths];
@@ -143,8 +144,9 @@ int main(int argc, const char * argv[]) {
             NSString *str = [NSString stringWithFormat:@"\npath=%@\nname=%@\nremovable=%d\nwritable=%d\nunmountable=%d\n""description=%@\ntype=%@, size=%@\nfree Space=%lf MB\n\n",path, name, removable, writable, unmountable, description, type, size, freeSpaceMB];
             [cpuInfo writeToFile:str];
         }
-        
-        //int pid = [[NSProcessInfo processInfo] processIdentifier];
+        // mount point info query ends here!
+
+        // read from top starts here
         NSPipe *pipe = [NSPipe pipe];
         NSFileHandle *newFile = pipe.fileHandleForReading;
         
@@ -154,10 +156,16 @@ int main(int argc, const char * argv[]) {
         task.standardOutput = pipe;
         
         [task launch];
-        
         NSData *data = [newFile readDataToEndOfFile];
         [newFile closeFile];
+        // read from top ends here
         
+        /**
+         * Get more info and write those info to file
+         *  1. Network info
+         *  2. CPU Load
+         *  3. RAM Use
+         */
         NSString *grepOutput = [[NSString alloc] initWithData: data encoding: NSUTF8StringEncoding];
         [cpuInfo writeToFile:grepOutput];
         [cpuInfo writeToFile:getNetworkInfo()];
