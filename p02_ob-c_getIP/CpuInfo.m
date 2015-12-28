@@ -29,6 +29,7 @@ typedef struct kinfo_proc kinfo_proc;
     [handle writeData:[string dataUsingEncoding:NSUTF8StringEncoding]];
     [handle closeFile];
 }
+<<<<<<< HEAD
 
 - (NSDictionary *)netStatsForInterval:(NSTimeInterval)sampleInterval {
     // Get sizing info from sysctl and resize as needed.
@@ -276,6 +277,8 @@ static int GetBSDProcessList(kinfo_proc **procList, size_t *procCount)
     
     return [NSArray arrayWithArray:processes];
 }
+=======
+>>>>>>> 982c0e0d4a71534a7e277588b6a93ac22ad200de
 - (void) getNetworkUses {
     int mib[] = {
         CTL_NET,
@@ -347,7 +350,6 @@ static int GetBSDProcessList(kinfo_proc **procList, size_t *procCount)
 {
     //Show network Info
     [self getNetworkUses];
-    [self netStatsForInterval:0.1];
     natural_t numCPUsU = 0U;
     kern_return_t err = host_processor_info(mach_host_self(), PROCESSOR_CPU_LOAD_INFO, &numCPUsU, &cpuInfo, &numCpuInfo);
     if(err == KERN_SUCCESS) {

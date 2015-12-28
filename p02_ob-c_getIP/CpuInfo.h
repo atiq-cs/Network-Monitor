@@ -55,6 +55,5 @@
 
 - (void)applicationDidFinishLaunching;
 - (void)updateInfo:(NSTimer *)timer;
-- (NSArray*)getBSDProcessList;
 - (void)writeToFile:(NSString*)string;
 @end
