@@ -77,6 +77,7 @@ typedef struct kinfo_proc kinfo_proc;
 
 - (void)applicationDidFinishLaunching
 {
+    [self writeToFile:[NSString stringWithFormat:@"\n\nTime: %d seconds", time]];
     int mib[2U] = { CTL_HW, HW_NCPU };
     size_t sizeOfNumCPUs = sizeof(numCPUs);
     int status = sysctl(mib, 2U, &numCPUs, &sizeOfNumCPUs, NULL, 0U);
@@ -99,9 +100,8 @@ typedef struct kinfo_proc kinfo_proc;
 
 - (void)updateInfo:(NSTimer *)timer
 {
-    //Show network Info
-    [self writeToFile:[NSString stringWithFormat:@"\n\nTime: %d seconds", time]];
-    NSLog(@"Time: %d seconds", time);
+    //Show network Info and CPU Load
+    NSLog(@"[Time: %d seconds]", time);
     time +=2;
     [self getNetworkUses];
     natural_t numCPUsU = 0U;
@@ -122,7 +122,7 @@ typedef struct kinfo_proc kinfo_proc;
                 inUse = cpuInfo[(CPU_STATE_MAX * i) + CPU_STATE_USER] + cpuInfo[(CPU_STATE_MAX * i) + CPU_STATE_SYSTEM] + cpuInfo[(CPU_STATE_MAX * i) + CPU_STATE_NICE];
                 total = inUse + cpuInfo[(CPU_STATE_MAX * i) + CPU_STATE_IDLE];
             }
-            NSString *str = [NSString stringWithFormat:@"\nCore: %u Usage: %f", i, inUse / total];
+            NSString *str = [NSString stringWithFormat:@"\nCore %u usage: %f", i, inUse / total];
             [self writeToFile:str];
         }
         [CPUUsageLock unlock];

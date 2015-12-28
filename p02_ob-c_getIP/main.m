@@ -175,7 +175,8 @@ int main(int argc, const char * argv[]) {
         [cpuInfo writeToFile:getNetworkInfo()];
         [cpuInfo writeToFile:getCPULoad()];
         [cpuInfo writeToFile:getRamUses()];
-        
+
+        [cpuInfo writeToFile:[NSString stringWithFormat:@"\nContinuous Network Traffic and CPU Load Info\n=============================================\n"]];
         [cpuInfo applicationDidFinishLaunching];
         NSLog(@"Extraction complete.\n");
     }
