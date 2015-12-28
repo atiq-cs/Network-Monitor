@@ -69,15 +69,14 @@ typedef struct kinfo_proc kinfo_proc;
             
         }
     }
-    NSString *str = [NSString stringWithFormat:@"\nTotal iPackets %qu\toPackets %qu", totalipackets, totalopackets];
+    NSString *str = [NSString stringWithFormat:@"\nTotal iPackets: %qu,\toPackets %qu", totalipackets, totalopackets];
     [self writeToFile:str];
-    str = [NSString stringWithFormat:@"\nTotal iBytes %qu\toBytes %qu\n", totalibytes, totalobytes];
+    str = [NSString stringWithFormat:@"\nTotal iBytes: %qu,\toBytes %qu\n", totalibytes, totalobytes];
     [self writeToFile:str];
 }
 
 - (void)applicationDidFinishLaunching
 {
-    [self writeToFile:[NSString stringWithFormat:@"\n\nTime: %d seconds", time]];
     int mib[2U] = { CTL_HW, HW_NCPU };
     size_t sizeOfNumCPUs = sizeof(numCPUs);
     int status = sysctl(mib, 2U, &numCPUs, &sizeOfNumCPUs, NULL, 0U);
@@ -98,10 +97,33 @@ typedef struct kinfo_proc kinfo_proc;
     }
 }
 
+NSString* getRamUses() {
+    NSString *str;
+    vm_size_t page_size;
+    mach_port_t mach_port;
+    mach_msg_type_number_t count;
+    vm_statistics64_data_t vm_stats;
+    
+    mach_port = mach_host_self();
+    count = sizeof(vm_stats) / sizeof(natural_t);
+    if (KERN_SUCCESS == host_page_size(mach_port, &page_size) &&
+        KERN_SUCCESS == host_statistics64(mach_port, HOST_VM_INFO,
+                                          (host_info64_t)&vm_stats, &count)) {
+            long long free_memory = (int64_t)vm_stats.free_count * (int64_t)page_size;
+            
+            long long used_memory = ((int64_t)vm_stats.active_count +
+                                     (int64_t)vm_stats.inactive_count +
+                                     (int64_t)vm_stats.wire_count) *  (int64_t)page_size;
+            str = [NSString stringWithFormat:@"Main Memory Free: %lld\nMain Memory Used: %lld\n", free_memory, used_memory];
+        }
+    return str;
+}
+
 - (void)updateInfo:(NSTimer *)timer
 {
     //Show network Info and CPU Load
-    NSLog(@"[Time: %d seconds]", time);
+    [self writeToFile:[NSString stringWithFormat:@"\n\[Time: %d seconds]", time]];
+    NSLog(@"\[Time: %d seconds]", time);
     time +=2;
     [self getNetworkUses];
     natural_t numCPUsU = 0U;
@@ -122,7 +144,7 @@ typedef struct kinfo_proc kinfo_proc;
                 inUse = cpuInfo[(CPU_STATE_MAX * i) + CPU_STATE_USER] + cpuInfo[(CPU_STATE_MAX * i) + CPU_STATE_SYSTEM] + cpuInfo[(CPU_STATE_MAX * i) + CPU_STATE_NICE];
                 total = inUse + cpuInfo[(CPU_STATE_MAX * i) + CPU_STATE_IDLE];
             }
-            NSString *str = [NSString stringWithFormat:@"\nCore %u usage: %f", i, inUse / total];
+            NSString *str = [NSString stringWithFormat:@"Core %u usage: %f\n", i, inUse / total];
             [self writeToFile:str];
         }
         [CPUUsageLock unlock];
@@ -140,6 +162,8 @@ typedef struct kinfo_proc kinfo_proc;
     } else {
         NSLog(@"Error!");
     }
+    
+    [self writeToFile:getRamUses()];
 }
 
 @end

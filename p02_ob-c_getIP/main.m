@@ -43,28 +43,6 @@ NSString* getCPULoad() {
     else return @"-1";
 }
 
-NSString* getRamUses() {
-    NSString *str;
-    vm_size_t page_size;
-    mach_port_t mach_port;
-    mach_msg_type_number_t count;
-    vm_statistics64_data_t vm_stats;
-    
-    mach_port = mach_host_self();
-    count = sizeof(vm_stats) / sizeof(natural_t);
-    if (KERN_SUCCESS == host_page_size(mach_port, &page_size) &&
-        KERN_SUCCESS == host_statistics64(mach_port, HOST_VM_INFO,
-                                          (host_info64_t)&vm_stats, &count)) {
-            long long free_memory = (int64_t)vm_stats.free_count * (int64_t)page_size;
-            
-            long long used_memory = ((int64_t)vm_stats.active_count +
-                                     (int64_t)vm_stats.inactive_count +
-                                     (int64_t)vm_stats.wire_count) *  (int64_t)page_size;
-            str = [NSString stringWithFormat:@"\nMain Memory Usage\n=================\nFree: %lld\nUsed: %lld\n", free_memory, used_memory];
-    }
-    return str;
-}
-
 NSString* getNetworkInfo() {
     struct ifaddrs *allInterfaces;
     NSString *str;
@@ -174,9 +152,8 @@ int main(int argc, const char * argv[]) {
         [cpuInfo writeToFile:grepOutput];
         [cpuInfo writeToFile:getNetworkInfo()];
         [cpuInfo writeToFile:getCPULoad()];
-        [cpuInfo writeToFile:getRamUses()];
 
-        [cpuInfo writeToFile:[NSString stringWithFormat:@"\nContinuous Network Traffic and CPU Load Info\n=============================================\n"]];
+        [cpuInfo writeToFile:[NSString stringWithFormat:@"\nContinuous Network Traffic and CPU Load Info\n============================================="]];
         [cpuInfo applicationDidFinishLaunching];
         NSLog(@"Extraction complete.\n");
     }
