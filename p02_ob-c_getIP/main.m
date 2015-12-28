@@ -94,10 +94,14 @@ NSString* getNetworkInfo() {
                 
                 // For the same interface it is showing IP info
                 // Convert interface address to a human readable string:
-                if (addr->sa_family == AF_INET)
-                    [str stringByAppendingString:[NSString stringWithFormat:@"IPv4 address:%s\n", host]];
-                else if (addr->sa_family == AF_INET6)
-                    [str stringByAppendingString:[NSString stringWithFormat:@"IPv6 address:%s\n", host]];
+                if (addr->sa_family == AF_INET){
+                    NSString *temp = [NSString stringWithFormat:@"IPv4 address:%s\n", host];
+                    str = [NSString stringWithFormat:@"%@%@", str, temp];
+                }
+                else if (addr->sa_family == AF_INET6){
+                    NSString *temp = [NSString stringWithFormat:@"IPv6 address:%s\n", host];
+                    str = [NSString stringWithFormat:@"%@%@", str, temp];
+                }
             }
         }
         freeifaddrs(allInterfaces);
@@ -164,9 +168,6 @@ int main(int argc, const char * argv[]) {
         [cpuInfo writeToFile:getCPULoad()];
         [cpuInfo writeToFile:getRamUses()];
         
-        //print List of running processes
-        NSString *str = [NSString stringWithFormat:@"\n%@", [cpuInfo getBSDProcessList]];
-        [cpuInfo writeToFile:str];
         [cpuInfo applicationDidFinishLaunching];
     }
     return 0;
