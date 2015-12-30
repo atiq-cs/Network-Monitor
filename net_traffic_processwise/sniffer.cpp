@@ -324,7 +324,7 @@ print_payload(const u_char *payload, int len)
         print_hex_ascii_line(ch, line_len, offset);
         /* compute total remaining */
         len_rem = len_rem - line_len;
-        /* shift pointer to remaining bytes to print */
+        /* shift pointer to aaremaining bytes to print */
         ch = ch + line_len;
         /* add offset */
         offset = offset + line_width;
@@ -429,8 +429,41 @@ got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
     return;
 }
 
-int main(int argc, char *argv[])
-{
+/* This part is in C++  */
+#include <iostream>
+#include <string>
+
+void build_hash_table(char* pStr) {
+	std::string str;
+	str = "hello";
+	std::cout << str <<  std::endl;
+}
+
+int get_process_mapping() {
+	long lSize;
+	// FILE *pFile = popen("/bin/ls -l /Users/musicapp/", "r");
+	FILE *pFile = popen("lsof -i", "r");
+	if (!pFile)
+		return -1;
+	fseek (pFile , 0 , SEEK_END);
+	lSize = ftell (pFile);
+	rewind (pFile);
+	
+	// char* buffer = new char[lSize+1];
+	char* buffer = (char *) malloc(lSize+1);
+	size_t result = fread(buffer, 1, lSize, pFile);
+	buffer[lSize] = '\0';
+	printf("%s\n", buffer);
+	/* line_p = fgets(buffer, sizeof(buffer), pFile);
+	printf("%s", line_p); */
+	pclose(pFile);
+	build_hash_table(buffer);
+	puts("============================================");	
+	free(buffer);
+	return 0;
+}
+
+int main(int argc, char *argv[]) {
     /*
     pcap_t *pcap;
     const unsigned char *packet;
@@ -456,7 +489,9 @@ int main(int argc, char *argv[])
     
     // terminate
      */
-    
+	if (get_process_mapping()<0)
+		return 0;
+	
     char *dev = NULL;			/* capture device name */
     char errbuf[PCAP_ERRBUF_SIZE];		/* error buffer */
     pcap_t *handle;				/* packet capture handle */
