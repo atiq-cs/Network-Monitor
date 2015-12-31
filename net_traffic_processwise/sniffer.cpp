@@ -460,9 +460,12 @@ void build_hash_table(const char* pStr) {
 		if ((pos = line.find(" ", 0)) == std::string::npos)
 			continue;
 		std::string token_val = line.substr(0, pos);
-		/* std::cout<<" " << token_key << " ->  " << token_val << std::endl; */
-		std::pair<std::unordered_map<std::string, std::string>::iterator, bool> res = global_process_hash_table.emplace(token_key, token_val);
-		if (! res.second)
+		/* std::cout<<" " << token_key << " ->  " << token_val << std::endl; 
+		std::pair<std::unordered_map<std::string, std::string>::iterator, bool> */
+		auto res = global_process_hash_table.emplace(token_key, token_val);
+		if (res.second)
+			std::cout<< "Key " << token_key << " successfully inserted." << std::endl;
+		else
 			std::cout<< "Key " << token_key << " already exist!" << std::endl;
     }
 	/*
