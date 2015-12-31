@@ -432,11 +432,38 @@ got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 /* This part is in C++  */
 #include <iostream>
 #include <string>
+#include <sstream>
 
-void build_hash_table(char* pStr) {
-	std::string str;
-	str = "hello";
-	std::cout << str <<  std::endl;
+void build_hash_table(const char* pStr) {
+	std::stringstream stringStream(pStr);
+	std::string line;
+	std::string local_ip = "130.245.188.149";
+	
+	while(std::getline(stringStream, line)) 
+	{
+		//std::string delims
+	    std::size_t prev = 0, pos;
+	    if ((prev = line.find("TCP ", prev)) == std::string::npos && (prev = line.find("UDP ", prev)) == std::string::npos)
+			continue;
+		prev += 4;
+		if ((pos = line.find("->", prev)) == std::string::npos &&  (pos = line.find(" ", prev)) == std::string::npos)
+			continue;
+		if (pos <= prev)
+			continue;
+		std::string token = line.substr(prev, pos-prev);
+		if (token.find("localhost") == 0) {
+			token.erase(0, strlen("localhost"));
+			token.insert(0, local_ip);
+		}
+        // wordVector.push_back(line.substr(prev, pos-prev));
+		std::cout<<"we got token:  " << token  << std::endl;
+    }
+	/*
+	not expected
+    if (prev < line.length())
+        //wordVector.push_back(line.substr(prev, std::string::npos));
+		std::cout<<"we got token:  " << line.substr(prev, std::string::npos) << std::endl;
+	}*/
 }
 
 int get_process_mapping() {
@@ -500,7 +527,7 @@ int main(int argc, char *argv[]) {
     struct bpf_program fp;			/* compiled filter program (expression) */
     bpf_u_int32 mask;			/* subnet mask */
     bpf_u_int32 net;			/* ip */
-    int num_packets = 100;			/* number of packets to capture */
+    int num_packets = 5;			/* number of packets to capture */
     
     print_app_banner();
     
