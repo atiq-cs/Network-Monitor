@@ -433,30 +433,37 @@ got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 #include <iostream>
 #include <string>
 #include <sstream>
+#include <unordered_map>
 
+std::unordered_map<std::string, std::string> global_process_hash_table;
 void build_hash_table(const char* pStr) {
 	std::stringstream stringStream(pStr);
 	std::string line;
 	std::string local_ip = "130.245.188.149";
 	
-	while(std::getline(stringStream, line)) 
-	{
-		//std::string delims
+	while(std::getline(stringStream, line)) {
 	    std::size_t prev = 0, pos;
+		// find position for first pattern after which ip and port starts
 	    if ((prev = line.find("TCP ", prev)) == std::string::npos && (prev = line.find("UDP ", prev)) == std::string::npos)
 			continue;
 		prev += 4;
+		// find position for second pattern before which port ends
 		if ((pos = line.find("->", prev)) == std::string::npos &&  (pos = line.find(" ", prev)) == std::string::npos)
 			continue;
 		if (pos <= prev)
 			continue;
-		std::string token = line.substr(prev, pos-prev);
-		if (token.find("localhost") == 0) {
-			token.erase(0, strlen("localhost"));
-			token.insert(0, local_ip);
+		std::string token_key = line.substr(prev, pos-prev);
+		if (token_key.find("localhost") == 0) {
+			token_key.erase(0, strlen("localhost"));
+			token_key.insert(0, local_ip);
 		}
-        // wordVector.push_back(line.substr(prev, pos-prev));
-		std::cout<<"we got token:  " << token  << std::endl;
+		if ((pos = line.find(" ", 0)) == std::string::npos)
+			continue;
+		std::string token_val = line.substr(0, pos);
+		/* std::cout<<" " << token_key << " ->  " << token_val << std::endl; */
+		std::pair<std::unordered_map<std::string, std::string>::iterator, bool> res = global_process_hash_table.emplace(token_key, token_val);
+		if (! res.second)
+			std::cout<< "Key " << token_key << " already exist!" << std::endl;
     }
 	/*
 	not expected
@@ -464,6 +471,10 @@ void build_hash_table(const char* pStr) {
         //wordVector.push_back(line.substr(prev, std::string::npos));
 		std::cout<<"we got token:  " << line.substr(prev, std::string::npos) << std::endl;
 	}*/
+	
+	for (auto kv: global_process_hash_table) {
+		std::cout<<" " << kv.first << " ->  " << kv.second << std::endl;		
+	}
 }
 
 int get_process_mapping() {
@@ -480,7 +491,7 @@ int get_process_mapping() {
 	char* buffer = (char *) malloc(lSize+1);
 	size_t result = fread(buffer, 1, lSize, pFile);
 	buffer[lSize] = '\0';
-	printf("%s\n", buffer);
+	// printf("%s\n", buffer);
 	/* line_p = fgets(buffer, sizeof(buffer), pFile);
 	printf("%s", line_p); */
 	pclose(pFile);
