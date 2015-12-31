@@ -7,9 +7,9 @@
  * and length of each such packet.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include <netinet/in.h>
 #include <netinet/ip.h>
@@ -22,10 +22,7 @@
 #define APP_DISCLAIMER	"THERE IS ABSOLUTELY NO WARRANTY FOR THIS PROGRAM."
 
 #include <pcap.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <ctype.h>
+#include <cctype>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -432,6 +429,7 @@ got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 /* This part is in C++  */
 #include <iostream>
 #include <string>
+#include <cstring>
 #include <sstream>
 #include <unordered_map>
 
@@ -439,24 +437,37 @@ std::unordered_map<std::string, std::string> global_process_hash_table;
 void build_hash_table(const char* pStr) {
 	std::stringstream stringStream(pStr);
 	std::string line;
-	std::string local_ip = "130.245.188.149";
+	std::string local_ip = "130.245.188.149:";
 	
+	// only insert ports for localhost
 	while(std::getline(stringStream, line)) {
-	    std::size_t prev = 0, pos;
-		// find position for first pattern after which ip and port starts
+	    std::size_t prev = 0, pos=0;
+		// find position for first pattern after which source ip and port starts
 	    if ((prev = line.find("TCP ", prev)) == std::string::npos && (prev = line.find("UDP ", prev)) == std::string::npos)
 			continue;
-		prev += 4;
-		// find position for second pattern before which port ends
+		prev +=  strlen("TCP ");
+		// find position for second pattern before which source port ends
 		if ((pos = line.find("->", prev)) == std::string::npos &&  (pos = line.find(" ", prev)) == std::string::npos)
+			continue;
+		// if localhost or local ip string is found, trim them
+		if (line.find("localhost:", prev) == prev)
+			prev += strlen("localhost:");
+		else if (line.find(local_ip, prev) == prev)
+			prev += local_ip.length();
+		else
 			continue;
 		if (pos <= prev)
 			continue;
+		// else we ignore other ip
 		std::string token_key = line.substr(prev, pos-prev);
-		if (token_key.find("localhost") == 0) {
-			token_key.erase(0, strlen("localhost"));
-			token_key.insert(0, local_ip);
-		}
+		bool hasDestIP = false;
+		if (pos+1 <  line.length() &&  line[pos+1] == '>')
+			hasDestIP = true;
+		prev = pos+2;
+		// set post and get dest port similarly for mapping
+		
+		
+		// get process name
 		if ((pos = line.find(" ", 0)) == std::string::npos)
 			continue;
 		std::string token_val = line.substr(0, pos);
@@ -467,6 +478,7 @@ void build_hash_table(const char* pStr) {
 			std::cout<< "Key " << token_key << " successfully inserted." << std::endl;
 		else
 			std::cout<< "Key " << token_key << " already exist!" << std::endl;
+		hasDestIP
     }
 	/*
 	not expected
@@ -494,7 +506,7 @@ int get_process_mapping() {
 	char* buffer = (char *) malloc(lSize+1);
 	size_t result = fread(buffer, 1, lSize, pFile);
 	buffer[lSize] = '\0';
-	// printf("%s\n", buffer);
+	printf("%s\n", buffer);
 	/* line_p = fgets(buffer, sizeof(buffer), pFile);
 	printf("%s", line_p); */
 	pclose(pFile);
