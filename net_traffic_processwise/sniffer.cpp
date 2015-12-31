@@ -438,7 +438,7 @@ void build_hash_table(const char* pStr) {
 	std::stringstream stringStream(pStr);
 	std::string line;
 	std::string local_ip = "130.245.188.149:";
-	
+
 	// only insert ports for localhost
 	while(std::getline(stringStream, line)) {
 	    std::size_t prev = 0, pos=0;
@@ -461,12 +461,28 @@ void build_hash_table(const char* pStr) {
 		// else we ignore other ip
 		std::string token_key = line.substr(prev, pos-prev);
 		bool hasDestIP = false;
+		std::string second_key = "";
 		if (pos+1 <  line.length() &&  line[pos+1] == '>')
 			hasDestIP = true;
+		if (! hasDestIP)
+			goto no_second_key;
 		prev = pos+2;
-		// set post and get dest port similarly for mapping
 		
+		// set pos and get dest port similarly for mapping
+		// to get the second port, we go the same way verify ip
+		if ((pos = line.find(" ", prev)) == std::string::npos)
+			goto no_second_key;
+		// std::cout<<"str from prev " << line.substr(prev)<<std::endl;
+		if (line.find("localhost:", prev) == prev)
+			prev += strlen("localhost:");
+		else if (line.find(local_ip, prev) == prev)
+			prev += local_ip.length();
+		else
+			goto no_second_key;
 		
+		second_key = line.substr(prev, pos-prev);
+		
+no_second_key:	
 		// get process name
 		if ((pos = line.find(" ", 0)) == std::string::npos)
 			continue;
@@ -478,7 +494,14 @@ void build_hash_table(const char* pStr) {
 			std::cout<< "Key " << token_key << " successfully inserted." << std::endl;
 		else
 			std::cout<< "Key " << token_key << " already exist!" << std::endl;
-		hasDestIP
+		if (second_key != "") {
+			res = global_process_hash_table.emplace(second_key, token_val);
+			if (res.second)
+				std::cout<< "Second key " << second_key << " successfully inserted." << std::endl;
+			else
+				std::cout<< "Second key " << second_key << " already exist!" << std::endl;
+		}
+		// hasDestIP
     }
 	/*
 	not expected
