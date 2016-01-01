@@ -55,83 +55,6 @@ void problem_pkt(struct timeval ts, const char *reason);
 /* Report the specific problem of a packet being too short. */
 void too_short(struct timeval ts, const char *truncated_hdr);
 
-/* dump_UDP_packet()
- *
- * This routine parses a packet, expecting Ethernet, IP, and UDP headers.
- * It extracts the UDP source and destination port numbers along with the UDP
- * packet length by casting structs over a pointer that we move through
- * the packet.  We can do this sort of casting safely because libpcap
- * guarantees that the pointer will be aligned.
- *
- * The "ts" argument is the timestamp associated with the packet.
- *
- * Note that "capture_len" is the length of the packet *as captured by the
- * tracing program*, and thus might be less than the full length of the
- * packet.  However, the packet pointer only holds that much data, so
- * we have to be careful not to read beyond it.
- */
-void dump_UDP_packet(const unsigned char *packet, struct timeval ts,
-                     unsigned int capture_len)
-{
-    struct ip *ip;
-    struct UDP_hdr *udp;
-    unsigned int IP_header_length;
-    
-    /* For simplicity, we assume Ethernet encapsulation. */
-    
-    if (capture_len < sizeof(struct ether_header))
-    {
-        /* We didn't even capture a full Ethernet header, so we
-         * can't analyze this any further.
-         */
-        too_short(ts, "Ethernet header");
-        return;
-    }
-    
-    /* Skip over the Ethernet header. */
-    packet += sizeof(struct ether_header);
-    capture_len -= sizeof(struct ether_header);
-    
-    if (capture_len < sizeof(struct ip))
-    { /* Didn't capture a full IP header */
-        too_short(ts, "IP header");
-        return;
-    }
-    
-    ip = (struct ip*) packet;
-    IP_header_length = ip->ip_hl * 4;	/* ip_hl is in 4-byte words */
-    
-    if (capture_len < IP_header_length)
-    { /* didn't capture the full IP header including options */
-        too_short(ts, "IP header with options");
-        return;
-    }
-    
-    if (ip->ip_p != IPPROTO_UDP)
-    {
-        problem_pkt(ts, "non-UDP packet");
-        return;
-    }
-    
-    /* Skip over the IP header to get to the UDP header. */
-    packet += IP_header_length;
-    capture_len -= IP_header_length;
-    
-    if (capture_len < sizeof(struct UDP_hdr))
-    {
-        too_short(ts, "UDP header");
-        return;
-    }
-    
-    udp = (struct UDP_hdr*) packet;
-    
-    printf("%s UDP src_port=%d dst_port=%d length=%d\n",
-           timestamp_string(ts),
-           ntohs(udp->uh_sport),
-           ntohs(udp->uh_dport),
-           ntohs(udp->uh_ulen));
-}
-
 /* default snap length (maximum bytes per packet to capture) */
 #define SNAP_LEN 1518
 
@@ -336,6 +259,97 @@ print_payload(const u_char *payload, int len)
     return;
 }
 
+#include "sniffer.h"
+
+/* dump_UDP_packet()
+ *
+ * This routine parses a packet, expecting Ethernet, IP, and UDP headers.
+ * It extracts the UDP source and destination port numbers along with the UDP
+ * packet length by casting structs over a pointer that we move through
+ * the packet.  We can do this sort of casting safely because libpcap
+ * guarantees that the pointer will be aligned.
+ *
+ * The "ts" argument is the timestamp associated with the packet.
+ *
+ * Note that "capture_len" is the length of the packet *as captured by the
+ * tracing program*, and thus might be less than the full length of the
+ * packet.  However, the packet pointer only holds that much data, so
+ * we have to be careful not to read beyond it.
+ */
+void dump_UDP_packet(const unsigned char *packet, struct timeval ts,
+                     unsigned int capture_len,int ip_match_val)
+{
+	/*if (ip_match_val < 1)
+		return ;*/
+    struct ip *ip;
+    struct UDP_hdr *udp;
+    unsigned int IP_header_length;
+    
+    /* For simplicity, we assume Ethernet encapsulation. */
+    
+    if (capture_len < sizeof(struct ether_header))
+    {
+        /* We didn't even capture a full Ethernet header, so we
+         * can't analyze this any further.
+         */
+        too_short(ts, "Ethernet header");
+        return;
+    }
+    
+    /* Skip over the Ethernet header. */
+    packet += sizeof(struct ether_header);
+    capture_len -= sizeof(struct ether_header);
+    
+    if (capture_len < sizeof(struct ip))
+    { /* Didn't capture a full IP header */
+        too_short(ts, "IP header");
+        return;
+    }
+    
+    ip = (struct ip*) packet;
+    IP_header_length = ip->ip_hl * 4;	/* ip_hl is in 4-byte words */
+    
+    if (capture_len < IP_header_length)
+    { /* didn't capture the full IP header including options */
+        too_short(ts, "IP header with options");
+        return;
+    }
+    
+    if (ip->ip_p != IPPROTO_UDP)
+    {
+        problem_pkt(ts, "non-UDP packet");
+        return;
+    }
+    
+    /* Skip over the IP header to get to the UDP header. */
+    packet += IP_header_length;
+    capture_len -= IP_header_length;
+    
+    if (capture_len < sizeof(struct UDP_hdr))
+    {
+        too_short(ts, "UDP header");
+        return;
+    }
+    
+    udp = (struct UDP_hdr*) packet;
+    // this is a good place to match the port against the hash table entries
+	if (ip_match_val == 1) {
+		unsigned int src_port = ntohs(udp->uh_sport);
+		std::cout<<"source port: " << src_port<<std::endl;
+	}
+	else if (ip_match_val == 2) {
+		unsigned int dst_port = ntohs(udp->uh_dport);
+		std::cout<<"dest port: " << dst_port<<std::endl;
+	}
+	else
+    printf("No match for %s UDP src_port=%d dst_port=%d length=%d\n",
+           timestamp_string(ts),
+           ntohs(udp->uh_sport),
+           ntohs(udp->uh_dport),
+           ntohs(udp->uh_ulen));
+    
+}
+
 /*
  * dissect/print packet
  */
@@ -369,17 +383,29 @@ got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
         return;
     }
     
+	int match_val = 0;
+	
     /* print source and destination IP addresses */
-    printf("       From: %s\n", inet_ntoa(ip->ip_src));
-    printf("         To: %s\n", inet_ntoa(ip->ip_dst));
-    
+	char *src_ip = strdup(inet_ntoa(ip->ip_src));
+	char *dst_ip = strdup(inet_ntoa(ip->ip_dst));
+	if (!strcmp(src_ip, "localhost") ||  !strcmp(src_ip, plocal_ip)) {
+		match_val = 1;
+		if (!strcmp(dst_ip, "localhost") ||  !strcmp(dst_ip, plocal_ip))
+			match_val+=2;
+	}
+	else if (!strcmp(dst_ip, "localhost") ||  !strcmp(dst_ip, plocal_ip))
+		match_val = 2;
+	
+    printf("       From: %s\n", src_ip);
+    printf("         To: %s\n", dst_ip);
+    free(src_ip); free(dst_ip);
     /* determine protocol */
     switch(ip->ip_p) {
         case IPPROTO_TCP:
             printf("   Protocol: TCP\n");
             break;
         case IPPROTO_UDP:
-            dump_UDP_packet(packet, header->ts, header->caplen);
+            dump_UDP_packet(packet, header->ts, header->caplen, match_val);
             printf("   Protocol: UDP\n");
             return;
         case IPPROTO_ICMP:
@@ -392,7 +418,7 @@ got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
             printf("   Protocol: unknown\n");
             return;
     }
-    
+
     /*
      *  OK, this packet is TCP.
      */
@@ -405,138 +431,56 @@ got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
         return;
     }
     
-    printf("   Src port: %d\n", ntohs(tcp->th_sport));
-    printf("   Dst port: %d\n", ntohs(tcp->th_dport));
-    
-    /* define/compute tcp payload (segment) offset */
+	int src_port = ntohs(tcp->th_sport);
+	int dst_port = ntohs(tcp->th_dport);
+    /* printf("   Src port: %d\n", src_port);
+    printf("   Dst port: %d\n", dst_port);
+    * define/compute tcp payload (segment) offset */
     payload = (u_char *)(packet + SIZE_ETHERNET + size_ip + size_tcp);
     
     /* compute tcp payload (segment) size */
     size_payload = ntohs(ip->ip_len) - (size_ip + size_tcp);
     
+	if (match_val == 1) {
+		auto it = global_process_hash_table.find(std::to_string(src_port));
+		if (it != global_process_hash_table.end()) {
+			it->second.iBytes += ntohs(ip->ip_len);
+		}
+		else
+			std::cout << "src port " << src_port <<  " not found!" << std::endl;
+	}
+	else if (match_val == 2) {
+		auto it = global_process_hash_table.find(std::to_string(dst_port));
+		if (it == global_process_hash_table.end()) {
+			std::cout << "dest port " << src_port <<  " not found!" << std::endl;		
+		}
+		else
+			it->second.oBytes += ntohs(ip->ip_len);
+	}
+	else if (match_val == 3) {
+		auto it = global_process_hash_table.find(std::to_string(src_port));
+		if (it != global_process_hash_table.end()) {
+			it->second.iBytes += ntohs(ip->ip_len);
+		}
+		else
+			std::cout << "src port " << src_port <<  " not found!" << std::endl;
+		it = global_process_hash_table.find(std::to_string(dst_port));
+		if (it == global_process_hash_table.end()) {
+			std::cout << "dest port " << src_port <<  " not found!" << std::endl;		
+		}
+	}
+	else
+		std::cout << "tcp packet not for this host!" << std::endl;		
     /*
      * Print payload data; it might be binary, so don't just
      * treat it as a string.
-     */
+     *
     if (size_payload > 0) {
         printf("   Payload (%d bytes):\n", size_payload);
         print_payload(payload, size_payload);
-    }
-    
+    }*/
+
     return;
-}
-
-/* This part is in C++ */
-#include <iostream>
-#include <string>
-#include <cstring>
-#include <sstream>
-#include <unordered_map>
-
-std::unordered_map<std::string, std::string> global_process_hash_table;
-void build_hash_table(const char* pStr) {
-	std::stringstream stringStream(pStr);
-	std::string line;
-	std::string local_ip = "130.245.188.149:";
-
-	// only insert ports for localhost
-	while(std::getline(stringStream, line)) {
-	    std::size_t prev = 0, pos=0;
-		// find position for first pattern after which source ip and port starts
-	    if ((prev = line.find("TCP ", prev)) == std::string::npos && (prev = line.find("UDP ", prev)) == std::string::npos)
-			continue;
-		prev +=  strlen("TCP ");
-		// find position for second pattern before which source port ends
-		if ((pos = line.find("->", prev)) == std::string::npos &&  (pos = line.find(" ", prev)) == std::string::npos)
-			continue;
-		// if localhost or local ip string is found, trim them
-		if (line.find("localhost:", prev) == prev)
-			prev += strlen("localhost:");
-		else if (line.find(local_ip, prev) == prev)
-			prev += local_ip.length();
-		else
-			continue;
-		if (pos <= prev)
-			continue;
-		// else we ignore other ip
-		std::string token_key = line.substr(prev, pos-prev);
-		bool hasDestIP = false;
-		std::string second_key = "";
-		if (pos+1 <  line.length() &&  line[pos+1] == '>')
-			hasDestIP = true;
-		if (! hasDestIP)
-			goto no_second_key;
-		prev = pos+2;
-		
-		// set pos and get dest port similarly for mapping
-		// to get the second port, we go the same way verify ip
-		if ((pos = line.find(" ", prev)) == std::string::npos)
-			goto no_second_key;
-		// std::cout<<"str from prev " << line.substr(prev)<<std::endl;
-		if (line.find("localhost:", prev) == prev)
-			prev += strlen("localhost:");
-		else if (line.find(local_ip, prev) == prev)
-			prev += local_ip.length();
-		else
-			goto no_second_key;
-		
-		second_key = line.substr(prev, pos-prev);
-		
-no_second_key:	
-		// get process name
-		if ((pos = line.find(" ", 0)) == std::string::npos)
-			continue;
-		std::string token_val = line.substr(0, pos);
-		/* std::cout<<" " << token_key << " ->  " << token_val << std::endl; 
-		std::pair<std::unordered_map<std::string, std::string>::iterator, bool> */
-		auto res = global_process_hash_table.emplace(token_key, token_val);
-		if (res.second)
-			std::cout<< "Key " << token_key << " successfully inserted." << std::endl;
-		else
-			std::cout<< "Key " << token_key << " already exist!" << std::endl;
-		if (second_key != "") {
-			res = global_process_hash_table.emplace(second_key, token_val);
-			if (res.second)
-				std::cout<< "Second key " << second_key << " successfully inserted." << std::endl;
-			else
-				std::cout<< "Second key " << second_key << " already exist!" << std::endl;
-		}
-		// hasDestIP
-    }
-	/*
-	not expected
-    if (prev < line.length())
-        //wordVector.push_back(line.substr(prev, std::string::npos));
-		std::cout<<"we got token:  " << line.substr(prev, std::string::npos) << std::endl;
-	}*/
-	
-	for (auto kv: global_process_hash_table) {
-		std::cout<<" " << kv.first << " ->  " << kv.second << std::endl;		
-	}
-}
-
-int get_process_mapping() {
-	long lSize;
-	// FILE *pFile = popen("/bin/ls -l /Users/musicapp/", "r");
-	FILE *pFile = popen("lsof -i", "r");
-	if (!pFile)
-		return -1;
-	fseek (pFile , 0 , SEEK_END);
-	lSize = ftell (pFile);
-	rewind (pFile);
-	
-	// char* buffer = new char[lSize+1];
-	char* buffer = (char *) malloc(lSize+1);
-	size_t result = fread(buffer, 1, lSize, pFile);
-	buffer[lSize] = '\0';
-	printf("%s\n", buffer);
-	/* line_p = fgets(buffer, sizeof(buffer), pFile);
-	printf("%s", line_p); */
-	pclose(pFile);
-	build_hash_table(buffer);
-	puts("============================================");	
-	free(buffer);
-	return 0;
 }
 
 int main(int argc, char *argv[]) {
@@ -565,6 +509,7 @@ int main(int argc, char *argv[]) {
     
     // terminate
      */
+	// exit if this failed
 	if (get_process_mapping()<0)
 		return 0;
 	
@@ -576,7 +521,7 @@ int main(int argc, char *argv[]) {
     struct bpf_program fp;			/* compiled filter program (expression) */
     bpf_u_int32 mask;			/* subnet mask */
     bpf_u_int32 net;			/* ip */
-    int num_packets = 10;			/* number of packets to capture */
+    int num_packets = 100;			/* number of packets to capture */
     
     print_app_banner();
     
@@ -606,7 +551,7 @@ int main(int argc, char *argv[]) {
         net = 0;
         mask = 0;
     }
-    
+
     /* print capture info */
     printf("Device: %s\n", dev);
     printf("Number of packets: %d\n", num_packets);
@@ -647,7 +592,7 @@ int main(int argc, char *argv[]) {
     pcap_close(handle);
     
     printf("\nCapture complete.\n");
-    
+    show_process_table();
     return 0;
 }
 
