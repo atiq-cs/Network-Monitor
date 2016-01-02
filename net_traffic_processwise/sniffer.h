@@ -1,9 +1,24 @@
-/* This part is in C++ */
+/* 
+ * Author	: Md Atiqur Rahman
+ * Date 	: December, 2015
+ * Compile	: 
+ * 		clang++ -std=c++14 -stdlib=libc++ -o sniffer.o -lpcap sniffer.cpp
+ *	then run,
+ *		sudo ./sniffer.o
+
+ * Desc:
+ *		Build port to process name hash table using the output of lsof
+ *		Then capture packets and increase counts for each port
+ */
+
 #include <iostream>
 #include <string>
 #include <cstring>
 #include <sstream>
 #include <unordered_map>
+
+// uncomment this to see captured packet info, will slow down processing of packets
+//#define ENABLE_CONSOLE_MESSAGES 1
 
 struct port_info {
 	std::string name;
@@ -13,6 +28,13 @@ struct port_info {
 
 const char *plocal_ip = "130.245.188.149";
 std::unordered_map<std::string, port_info> global_process_hash_table;
+
+bool sting_ends_with(std::string const &fullString, std::string const &ending) {
+    if (fullString.length() >= ending.length()) {
+        return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
+    } else
+    	return false;
+}
 
 void build_hash_table(const char* pStr) {
 	std::stringstream stringStream(pStr);
@@ -68,6 +90,14 @@ no_second_key:
 		if ((pos = line.find(" ", 0)) == std::string::npos)
 			continue;
 		std::string token_val = line.substr(0, pos);
+		// find if string ends with \x20
+		if (sting_ends_with(token_val, "\\x20"))
+			token_val = token_val.substr(0,token_val.length()-4);
+		// does not end with but contains
+		else if ((pos = token_val.find("\\x20", 0)) != std::string::npos) {
+			token_val = token_val.erase(pos+1,3);
+			token_val[pos] = ' ';
+		}
 		/* std::cout<<" " << token_key << " ->  " << token_val << std::endl; 
 		std::pair<std::unordered_map<std::string, std::string>::iterator, bool> */
 		struct port_info tmp_obj = {token_val, 0, 0};
@@ -111,8 +141,8 @@ int get_process_mapping() {
 	char* buffer = (char *) malloc(lSize+1);
 	size_t result = fread(buffer, 1, lSize, pFile);
 	buffer[lSize] = '\0';
-	printf("%s\n", buffer);
-	/* line_p = fgets(buffer, sizeof(buffer), pFile);
+	/*printf("%s\n", buffer);
+	 line_p = fgets(buffer, sizeof(buffer), pFile);
 	printf("%s", line_p); */
 	pclose(pFile);
 	build_hash_table(buffer);
@@ -121,11 +151,36 @@ int get_process_mapping() {
 	return 0;
 }
 
+/*
+	takes port string and update relevant(sender/receiver) byte count in hashtable	
+*/
+void update_byte_count(std::string port_str, int count, bool isSender) {
+	auto it = global_process_hash_table.find(port_str);
+	if (it == global_process_hash_table.end()) {
+		struct port_info tmp_obj = {"Unknown_App", 0, 0};
+		auto res_it = global_process_hash_table.emplace(port_str, tmp_obj);
+		if (! res_it.second) {
+			std::cout<<"insertion failed!"<<std::endl;
+			return ;
+		}
+		it = res_it.first;
+	}
+	//std::cout << "Adding "<< count <<  " bytes"<< std::endl;
+	if (isSender)
+		it->second.iBytes += count;
+	else
+		it->second.oBytes += count;	
+}
+
 void show_process_table() {
 	puts("Process Traffic List\n=======================================================");	
+	std::cout<< "Process name" << ":\t" << "incoming bytes" << ", " <<  "outgoing bytes" <<  std::endl;
 	for (auto kv: global_process_hash_table) {
-		if (kv.second.iBytes +  kv.second.oBytes > 0)
-			std::cout<< kv.second.name << ": " << kv.second.iBytes << ": " <<  kv.second.oBytes <<  std::endl;		
-	}
-	
+		if (kv.second.iBytes +  kv.second.oBytes > 0) {
+			if (kv.second.name == "Unknown_App")
+				std::cout<< kv.second.name <<" ("<<kv.first<<")"<< ":\t" << kv.second.iBytes << ", " <<  kv.second.oBytes <<  std::endl;
+			else
+				std::cout<< kv.second.name << ":\t" << kv.second.iBytes << ", " <<  kv.second.oBytes <<  std::endl;
+		}
+	}	
 }

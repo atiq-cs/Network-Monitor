@@ -277,7 +277,7 @@ print_payload(const u_char *payload, int len)
  * we have to be careful not to read beyond it.
  */
 void dump_UDP_packet(const unsigned char *packet, struct timeval ts,
-                     unsigned int capture_len,int ip_match_val)
+                     unsigned int capture_len, unsigned char match_val)
 {
 	/*if (ip_match_val < 1)
 		return ;*/
@@ -333,20 +333,23 @@ void dump_UDP_packet(const unsigned char *packet, struct timeval ts,
     
     udp = (struct UDP_hdr*) packet;
     // this is a good place to match the port against the hash table entries
-	if (ip_match_val == 1) {
-		unsigned int src_port = ntohs(udp->uh_sport);
-		std::cout<<"source port: " << src_port<<std::endl;
+	if (match_val == 1)
+		update_byte_count(std::to_string(ntohs(udp->uh_sport)), ntohs(udp->uh_ulen), true);
+	else if (match_val == 2)
+		update_byte_count(std::to_string(ntohs(udp->uh_dport)), ntohs(udp->uh_ulen), false);
+	else if (match_val == 3) { // considering IPC  communication
+		update_byte_count(std::to_string(ntohs(udp->uh_sport)), ntohs(udp->uh_ulen), true);
+		update_byte_count(std::to_string(ntohs(udp->uh_dport)), ntohs(udp->uh_ulen), false);
 	}
-	else if (ip_match_val == 2) {
-		unsigned int dst_port = ntohs(udp->uh_dport);
-		std::cout<<"dest port: " << dst_port<<std::endl;
-	}
+#ifdef ENABLE_CONSOLE_MESSAGES
 	else
-    printf("No match for %s UDP src_port=%d dst_port=%d length=%d\n",
-           timestamp_string(ts),
-           ntohs(udp->uh_sport),
-           ntohs(udp->uh_dport),
-           ntohs(udp->uh_ulen));
+	    printf("No match for %s UDP src_port=%d dst_port=%d length=%d\n",
+	           timestamp_string(ts),
+	           ntohs(udp->uh_sport),
+	           ntohs(udp->uh_dport),
+	           ntohs(udp->uh_ulen));
+#endif
+		
     
 }
 
@@ -356,7 +359,6 @@ void dump_UDP_packet(const unsigned char *packet, struct timeval ts,
 void
 got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 {
-    
     static int count = 1;                   /* packet counter */
     
     /* declare pointers to packet headers */
@@ -369,7 +371,7 @@ got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
     int size_tcp;
     int size_payload;
     
-    printf("\nPacket number %d:\n", count);
+    //printf("\nPacket number %d:\n", count);
     count++;
     
     /* define ethernet header */
@@ -383,7 +385,7 @@ got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
         return;
     }
     
-	int match_val = 0;
+	unsigned char match_val = 0;
 	
     /* print source and destination IP addresses */
 	char *src_ip = strdup(inet_ntoa(ip->ip_src));
@@ -396,17 +398,23 @@ got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 	else if (!strcmp(dst_ip, "localhost") ||  !strcmp(dst_ip, plocal_ip))
 		match_val = 2;
 	
+#ifdef ENABLE_CONSOLE_MESSAGES
     printf("       From: %s\n", src_ip);
     printf("         To: %s\n", dst_ip);
+#endif
     free(src_ip); free(dst_ip);
     /* determine protocol */
     switch(ip->ip_p) {
         case IPPROTO_TCP:
-            printf("   Protocol: TCP\n");
+		#ifdef ENABLE_CONSOLE_MESSAGES
+			printf("   Protocol: TCP\n");
+		#endif
             break;
         case IPPROTO_UDP:
             dump_UDP_packet(packet, header->ts, header->caplen, match_val);
-            printf("   Protocol: UDP\n");
+		#ifdef ENABLE_CONSOLE_MESSAGES
+			printf("   Protocol: UDP\n");
+		#endif
             return;
         case IPPROTO_ICMP:
             printf("   Protocol: ICMP\n");
@@ -441,36 +449,16 @@ got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
     /* compute tcp payload (segment) size */
     size_payload = ntohs(ip->ip_len) - (size_ip + size_tcp);
     
-	if (match_val == 1) {
-		auto it = global_process_hash_table.find(std::to_string(src_port));
-		if (it != global_process_hash_table.end()) {
-			it->second.iBytes += ntohs(ip->ip_len);
-		}
-		else
-			std::cout << "src port " << src_port <<  " not found!" << std::endl;
-	}
-	else if (match_val == 2) {
-		auto it = global_process_hash_table.find(std::to_string(dst_port));
-		if (it == global_process_hash_table.end()) {
-			std::cout << "dest port " << src_port <<  " not found!" << std::endl;		
-		}
-		else
-			it->second.oBytes += ntohs(ip->ip_len);
-	}
-	else if (match_val == 3) {
-		auto it = global_process_hash_table.find(std::to_string(src_port));
-		if (it != global_process_hash_table.end()) {
-			it->second.iBytes += ntohs(ip->ip_len);
-		}
-		else
-			std::cout << "src port " << src_port <<  " not found!" << std::endl;
-		it = global_process_hash_table.find(std::to_string(dst_port));
-		if (it == global_process_hash_table.end()) {
-			std::cout << "dest port " << src_port <<  " not found!" << std::endl;		
-		}
+	if (match_val == 1)
+		update_byte_count(std::to_string(src_port), size_payload, true);
+	else if (match_val == 2)
+		update_byte_count(std::to_string(dst_port), size_payload, false);
+	else if (match_val == 3) { // considering IPC  communication
+		update_byte_count(std::to_string(src_port), size_payload, true);
+		update_byte_count(std::to_string(dst_port), size_payload, false);
 	}
 	else
-		std::cout << "tcp packet not for this host!" << std::endl;		
+		std::cout << "tcp packet is not for this host!" << std::endl;		
     /*
      * Print payload data; it might be binary, so don't just
      * treat it as a string.
@@ -510,9 +498,12 @@ int main(int argc, char *argv[]) {
     // terminate
      */
 	// exit if this failed
+	//puts("press a key..");
+	//getchar();
 	if (get_process_mapping()<0)
 		return 0;
-	
+	//puts("press a key..");
+	//getchar();
     char *dev = NULL;			/* capture device name */
     char errbuf[PCAP_ERRBUF_SIZE];		/* error buffer */
     pcap_t *handle;				/* packet capture handle */
